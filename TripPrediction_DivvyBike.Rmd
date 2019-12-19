@@ -1,0 +1,424 @@
+---
+title: "DivvyBike Analysis"
+author: "Kelly Zhao, John Kuk"
+output: html_document
+---
+
+------
+
+# Executive Summary
+
+The Divvy bike system was strategically placed around the Chicagoland area to be known as the “last mile” transportation service. We are making assumptions that those renting are not actively thinking or aware of crime data at time of rental. Also, that Divvy rental placements decisions were already made where rental potential is high due to this "last mile" need. We decided to go with the Stepwise model after evaluating multiple models. While performing analysis we can say that from our baseline of no model has a gain from 0.8617029 to 0.2237982. While ridge provides better performance, stepwise is more concise with variables. The tradeoff between ridge and stepwise is negligible where MSE is 0.2212045 versus 0.2237982.
+
+**MSE Values:**
+
+* Baseline (no model)           0.8617029
+* Stepwise (Final Model 2)      0.2237982
+* Stepwise K-Fold               0.2316338
+* Ridge                         0.2212045
+* Lasso                         0.225231
+* Tree                          0.4031656
+* Tree.Prune                    0.3838907
+* Random Forest                 0.2521642
+* GBM (200)                     0.2383787
+* GAM                           0.2250286
+  
+**Final Model - Stepwise:**
+
+formula = trips ~ PARK_AREA_ACRES + CTA_TRAIN_STATIONS + Limited_Business_License + CAPACITY + MINORITY + ASSAULT + BATTERY + BURGLARY + THEFT
+
+1. PARK_AREA_ACRES: Negative relationship with trips. Some thoughts are that if the park is small people prefer to bike, if the park is too big, people prefer to drive. Also, bikes at perimeter of parks versus being in them, so purpose and motivation to use bikes is possibly different when a park is involved, and other activities in parks are considered versus renting and riding bikes.
+2. CTA_TRAIN_STATIONS: Negative relationship with trips. There is a possibility that if there are too many train stations, people can go to anywhere by train and therefore less need of a bike. Another thought the group had was that train stations have less correlation than buses because it is harder to make or change train stations. Busses are flexible and their routes can be changed; Divvy stations are even more flexible and individual routes can vary dramatically.
+3. Limited_Business_License: Positive relationship with trips. This makes sense in that more retailors means there might be more people walking and biking.
+4. CAPACITY: Positive relationship with trips. Places where there are more bikes there can be more available for rental.
+5. MINORITY: Negative relationship with trips. Is that those that are of a minority have less need for bikes or this kind of service? Thoughts that come up is possibly riding bikes is a lifestyle choice and some may already have bikes of their own so no need to rent one.
+6. ASSAULT: Negative relationship with trips. Assault by definition is the threat of harm.
+7. BATTERY: Positive relationship with trips. Battery by definition is cause of real physical harm. Thought is that maybe people are more likely to walk or bike in safer area (ASSAULT) so this influences bike rental negatively. Whereas for BATTERY it is likely people will go through these areas quickly to avoid so it will influence bike rental positively. ASSAULT and BATTERY have a quite strong correlation of 0.95, might due to the nature of the 2 kinds of crime are pretty similar. So, the sign of relationship with trips is not quite reliable. Overall, these two kinds of crime have a negative relation with trips, indicating that people might be less likely to ride in dangerous areas, though the evidence is not solid.
+8. BURGLARY: Negative relationship with trips. Definition is to enter a building or residence with the intention to commit a theft or any felonious crime. This kind of crime might be more common where people live, instead of where people work or shop, so bike demand could be less.
+9. THEFT: Positive relationship with trips. Definition is to take property, and it does not involve person-to-person interaction with force. It is easier to steal when people are walking or shopping than when they are driving or riding a bike.
+
+**Theory:**
+
+The challenge was to develop a theory to explain how different types of crime will affect Divvy bike demand. Generally, we believe that crime in these areas does not directly cause an increase in bike rentals nor do bike rentals directly cause crime. However, we do not have enough information to say this definitively and make this conclusion. For those who use the service there may also be a subset of people who are more comfortable walking or may not be as savvy to use the service. Service users may have budgets, and this is part of their daily normal commute option. For individuals living and traversing crime areas, they may not be aware of the crime or care. Or, they do care, but their needs and their lives have them already coping that this is normal for them and there may not necessarily be driven by fear of crime activity.
+
+As for Divvy locations being near CTA train stations and places where there are businesses, this logically makes sense for those who will use the service for "last mile" traversal. This also explains why park areas have a negative relationship where bike riders are not looking for rentals for joy riding and instead wanting that purposeful destination travel. Divvy may have decided that placement to these locations is ideal, so this already biases the data showing correlation with these locations.
+
+Crime for us seems as something a bike rider would not necessarily be aware of when renting a bike if their need or lifestyle choice to ride bikes frequently determines whether they rent a bike or not. Although the data is correlated it does not mean it makes bike riders rent or not rent if they have different motivations to rent in the first place. The sense is that where there is higher population where these bikes are located there will be more occurrence naturally of these kinds of crimes. There is not anything that tells us that these crimes were specific to bike riders.
+
+**Model Usage and Recommendations:**
+
+* The model could be used for finding the most profitable new spot.
+* To further explore the relationship between crime data and trips: 
+  * Collect data to confirm if Divvy renters are aware of crime in these locations.
+  * Confirm if any of this crime affects Divvy renters directly.
+  * Collect data related to capacity and if at certain locations bikes are over utilized (running out of bikes).
+
+* Leverage the model and crime data to determine Divvy placement for new locations where higher levels (magnitude) of crime (ASSAULT, BATTERY, BURGLARY, and THEFT) regardless of negative/positive effect to trips is a desirable placement. These places will have more business and will likely have more crime, and as such, provide more favorable conditions for Divvy bike rentals.
+* Similarly, leverage the model to adjust placement towards locations where there are higher levels of crime. These locations may be desirable not because of crime itself, but because of other factors due to "last mile" needs. Adjustments can also be made with regards to capacity to be able to rent more bikes.
+
+------
+
+# The Challenge
+
+* **How does the type and amount of crime around a Divvy bike station affect the demand for bikes, as measured by the number of rentals per time period?** We also want to assess how other independent variables are related to demand.
+* I will be providing you with a data set giving the **demand at n = 300 bike stations**, but I want you to think about what results you would expect before looking at the data.
+* I do not expect you to read other research articles.
+* Instead, I want you to think about **what could happen in the model and explanations for why.**
+* Your data will have data on how often 31 different crimes occurred in the area around the bike share station during the previous year.
+* I have lagged the crime data to avoid problems with reverse causality.
+* **Many of the crimes are rare, so we will focus on the following eight (you could use the other if you want): theft, battery, deceptive practice, assault, burglary, robbery, criminal trespassing, narcotics, and homicide.**
+* You might want to google these terms for more precise definitions. For example, my understanding is that assault involves a threat, but not bodily harm, while battery implies harm. Deceptive practice is sometimes called fraud, and an example is passing bad checks or trying to withdraw model from the bank as someone else.
+* You will also have data on: number of bus stops in the area, number of train stops in the area, station capacity (number of bikes), number of marked bike routes, number of businesses in the area, population density, park area, percent minority, average education level, and average per capita income.
+* For this problem, I **want you to develop a theory to explain how different types of crime will affect demand.**
+* It may be that some types of crime have no relationship with demand, and your theory should allow for this. **Why might some types have an association and others not?** 
+* Another consideration is that you have actual crime statistics from the Chicago Police Department instead of perceptions about crime. **The two could be different (why?).**
+
+* **Submit a model using the Bike data.** 
+* **Predict Divvy demand as a function of the predictors you have been given.** You will not be able to include all of the variables in a model. 
+* Start by examining a correlation matrix and scatter plots.
+* Ultimately, I **want a model that is both interesting and correct.** 
+* Beware of omitted variables. The conclusions should also be robust to small changes in the specification.
+* You may want to think about forming composite variables. For example, you could form a new variable that measures the extent that a station is located in a “central business district,” (or CBD). Many variables indicate a CBD, such as having many businesses and train stations, while residential neighborhoods will have fewer businesses. You could average variables that you have to measure CBD. 
+* Submit your model and a written summary of your conclusions.
+
+------
+
+# Main Analysis for Model 2
+
+We performed many other steps and added them to the appendix. This is the main part we documented as part of our process influencing our decisions and conclusions.
+
+## Load Dependencies
+
+```{r eval = FALSE, echo = FALSE}
+# Run this section manually only once to import all the dependencies into RStudio
+install.packages("pROC")
+install.packages("randomForest")
+install.packages("survival")
+install.packages("lattice")
+install.packages("gbm")
+install.packages("foreach")
+install.packages("gam")
+install.packages("Matrix")
+install.packages("glmnet")
+install.packages("tree")
+install.packages("car")
+```
+
+```{r}
+library(pROC)
+library(randomForest)
+library(survival)
+library(lattice)
+# library(splines) # loaded by gam as a dependency
+# library(foreach) # loaded by gam as a dependency
+library(parallel)
+library(gbm)
+library(gam)
+library(Matrix)
+library(glmnet)
+library(tree)
+library(car)
+```
+
+## Load Data
+Let's get a general sense of it.
+
+```{r}
+setwd("./")
+divvy.full <- read.csv("bike.csv")
+head(divvy.full)
+```
+
+## Considered Variables
+
+The professor indicated a set of varables that might be related to pridict trips (there were 8 crimes that were included). We created histograms to see the range and distribution of the data. Also looked at the summary and correlation matrix of this data.
+
+To do this with ease we created a new suggested subset (divvy) of data to use with these variables: PARK_AREA_ACRES (2), CTA_BUS_STATIONS (3), CTA_TRAIN_STATIONS (4), BIKE_ROUTES (5), Limited_Business_License (6), Retail_Food_Establishment (7), CAPACITY (8), PER_CAPITA_INCOME (9), POPULATION_SQ_MILE (10), CBD (11), MINORITY (12), EDU (13), ASSAULT (15), BATTERY (16), BURGLARY (17), CRIMINAL_TRESPASS (21), DECEPTIVE_PRACTICE (22), HOMICIDE (24), ROBBERY (40), THEFT (43), trips (45).
+
+Note from here we will use this suggested subset of data named "divvy."
+
+```{r}
+divvy = divvy.full[,c(2:13,15:17,21,22,24,40,43,45)]
+
+par(mfrow=c(2,4))
+numCols = ncol(divvy)
+for(i in 1:numCols){
+  hist(divvy[,i], main=names(divvy)[i])
+} 
+```
+
+* These varables are right screwed:
+  * TRAIN_STATIONS
+  * Limited_Business_License
+  * Retail_Food_Establishment
+  * CAPACITY
+  * POPULATION
+* Trip and other varables are normal distributed
+
+```{r}
+summary(divvy)
+round(cor(divvy), 2)
+```
+
+* Notable correlations from matrix
+  * Odd that more park acres have a negative correlation with trips, the sense is possibly that bike racks are not in the park areas but surrounding areas. Also, visibiilty may influence people from committing crimes.
+  * CTA_BUS_STATIONS, CTA_TRAIN_STATIONS, BIKE_ROUTES, Limited_Business_License, Retail_Food_Establishment, CAPACITY, and CBD has a fairly positive effect on bike usage.
+  * Interestingly Minority has a great negative correlation with trips.
+  * It seems DECEPTIVE_PRACTICE and ROBBERY have a pretty positive influence on trips.
+  * HOMICIDE has a fairly negative influence on rentals, this makes common sense that people wish to avoid going to high crime areas to rent bikes.
+  * CTA_BUS_STATIONS and CTA_TRAIN_STATIONS correlated with business (Limited_Business_License and Retail_Food_Establishment) makes sense given that these stations may be placed in locations where people would want to frequently visit.
+  * What's interesting is that THEFT occurs in CBD areas, and the sense is that this is where people are and reports are made of theft. More population dense areas will have more chances of crime as opposed to places with no people.
+  * There is a sense also that certain crime have correlation with each other because they have a relationship with nefarious action. So makes sense for example that ROBBERY and THEFT has a correlation with activities such as BATTERY. Possibly a sense of multicollinearity with crime variables.
+
+## Setup Training and Test data
+
+Decided to split up the data 60/40 to train/test respectively.
+
+```{r}
+set.seed(12345)
+train = runif(nrow(divvy))<.6
+table(train)
+```
+
+------
+
+# Baseline (no model)
+
+Variance of trips with no model as the baseline.
+
+```{r}
+var(divvy[!train,]$trips)
+```
+
+------
+
+# Stepwise
+
+Let's first try stepwise to see how it simplifies the model.
+
+```{r}
+fit = lm(trips ~., divvy[train,])
+summary(fit)
+
+par(mfrow=c(2,2))
+plot(fit)
+fit.stepwise = step(fit)
+```
+
+* R-squared is 0.7756 and it doesn't seem bad looking at the plots. We have a target model.
+* formula = trips ~ PARK_AREA_ACRES + CTA_TRAIN_STATIONS + Limited_Business_License + 
+    CAPACITY + MINORITY + ASSAULT + BATTERY + BURGLARY + THEFT
+
+### After Stepwise - Summary and Plots
+
+```{r}
+summary(fit.stepwise)
+par(mfrow=c(2,2))
+plot(fit.stepwise)
+```
+
+### Stepwise - MSE
+
+```{r}
+yhat = predict(fit.stepwise, divvy[!train,])
+mean((divvy[!train,]$trips-yhat)^2)
+```
+
+1. PARK_AREA_ACRES: Nagative relationship with trips. Some thoughts is that if the park is small people prefer to bike, if the park is too big, people prefer to drive. Also, bikes at perimeter of parks versus being in them, so purpose and motivation to use bikes is possibly different when a park is invovled, and other activities in parks are considered versus renting and riding bikes.
+2. CTA_TRAIN_STATIONS: Nagative relationship with trips. There is a possibility that if there are too many train stations, people can go to anywhere by train and therefore less need of a bike. Another thought the group had was that train stations have less correlation than buses because it is harder to make or change train stations. Busses are more flexible and their routes can even be changes. Divvy staitons are even more flexible and individual routes can vary dramatically.
+3. Limited_Business_License: Positive relationship with trips. This makes sense in that more retailors means there might be more people walking and biking.
+4. CAPACITY: Positive relationship with trips. Places where there are more bikes there can be more available for rental.
+5. MINORITY: Nagative relationship with trips. Is is that those that are of a minority have less need for bikes or this kind of service? Thoughts that come up is possibly riding bikes is a lifestyle choice and some may already have bikes of their own so no need to rent one.
+6. ASSAULT: Nagative relationship with trips. Assult by definition is the threat of harm.
+7. BATTERY: Positive relationship with trips. Battery by definition is cause of real physical harm. Thought is that maybe people are more likely to walk or bike in safer area (ASSAULT) so this influences bike rental negatively. Whereas for BATTERY it is likely people will go through these areas quickly to avoid so it will influence bike rental positively.
+8. BURGLARY: Nagative relationship with trips. Definition is to enter a building or residence with the intention to commit a theft or any felonious crime. This kind of crime might be more common where people live, insead of where people work or shop, so bike demand could be less.
+9. THEFT: Positive relationship with trips. Definition is to take property, and it does not involve person-to-person interaction with force. It is easier to steal when people are walking or shoping than when they are driving or riding a bike.
+
+### VIF
+
+```{r}
+vif(fit.stepwise)
+```
+
+* CTA_TRAIN_STATIONS, Limited_Business_License, ASSAULT,BATTERY，THEFT have Multicollinearity
+
+### K-Fold Cross Validation
+
+K-Fold Cross Validation adding the cv column to the end of the table. 
+
+```{r}
+set.seed(12345)
+divvy.cross = divvy
+divvy.cross$cv = as.integer(runif(nrow(divvy.cross))*5)
+table(divvy.cross$cv)
+```
+
+### K-Fold MSE
+
+Perform K-Fold Cross Validation and find the MSE of the stepwise model
+
+```{r}
+yhat = rep(NA, nrow(divvy.cross))
+
+for(i in 0:4){
+  fit.kfold = lm(trips ~ PARK_AREA_ACRES + CTA_TRAIN_STATIONS + Limited_Business_License + CAPACITY + MINORITY + ASSAULT + BATTERY + BURGLARY + THEFT, divvy.cross, subset=(cv!=i))
+  yhat[divvy.cross$cv==i] = predict(fit.kfold, divvy.cross[divvy.cross$cv==i,])
+  
+}
+
+mean((divvy.cross$trips-yhat)^2)
+```
+
+* It looks like the MSE increased using K-Fold to 0.2305074 from 0.2237982.
+* We may just go ahead and use our 60/40 Test Set split moving forward. Our data set may be large enough to work with to evaluate models with.
+
+------
+
+# Ridge
+```{r}
+x = model.matrix(divvy$trips~., divvy)
+fit.ridge = glmnet(x[train,], divvy$trips[train], alpha=0)
+fit.cv.ridge = cv.glmnet(x[train,], divvy$trips[train], alpha=0)
+plot(fit.ridge, xvar = "lambda")
+abline(v=log(fit.cv.ridge$lambda.min))
+```
+
+```{r}
+predict(fit.ridge, x[!train,], s=fit.cv.ridge$lambda.min, type="coef")
+```
+
+```{r}
+yhat = predict(fit.ridge, x[!train,], s=fit.cv.ridge$lambda.min)
+mean((divvy$trips[!train] - yhat)^2)
+```
+
+* MSE is better than Stepwise
+
+------
+
+# Lasso
+```{r}
+x = model.matrix(divvy$trips~., divvy)
+fit.lasso = glmnet(x[train,], divvy$trips[train], alpha=1)
+fit.cv.lasso = cv.glmnet(x[train,], divvy$trips[train], alpha=1)
+plot(fit.lasso, xvar = "lambda")
+abline(v=log(fit.cv.lasso$lambda.min))
+```
+
+```{r}
+predict(fit.lasso, x[!train,], s=fit.cv.lasso$lambda.min, type="coef")
+```
+
+```{r}
+yhat = predict(fit.lasso, x[!train,], s=fit.cv.lasso$lambda.min)
+mean((divvy$trips[!train] - yhat)^2)
+```
+
+* MSE is worse than Ridge and Stepwise
+* There seems to be a difference between Stepwise and Ridge indicating that Retail_Food_Establishment is more of a factor than Limited_Business_License. Not sure why, but we can observe other evaluation methods to see what happens.
+
+------
+
+# Tree
+
+```{r}
+fit.tree = tree(trips~., divvy[train,])
+plot(fit.tree, type="uniform")
+text(fit.tree)
+```
+
+```{r}
+plot(cv.tree(fit.tree))
+```
+
+### Prune the Tree
+
+```{r}
+fit.tree.prune = prune.tree(fit.tree, best=7)
+fit.tree.prune
+plot(fit.tree.prune, type="uniform")
+text(fit.tree.prune)
+```
+
+* MINORITY is the primary branch, which means it has a larger influnce. Therefore, the higher minority the lower the trips.
+* So we look down the branch where MINORITY < 0.673563 leading to Retail_Food_Establishment. So the higher the retail food establishment the lower the trips. So in low retail areas there seems to be a tree path that leads to deceptive practices. What kind of deceptive practices with retail food establishments would detract bike rentals? Possibly because people would go to these places to work or shop, so this would increase bike rental.
+* Note that the tree indicates Retail_Food_Establishment instead of Limited_Business_License. There is a good indication of collinearity.
+
+### Print MSE for tree before and after Prune
+
+```{r}
+yhat.tree = predict(fit.tree, divvy[!train,])
+mean((divvy[!train,]$trips-yhat.tree)^2)
+yhat.prune = predict(fit.tree.prune, divvy[!train,])
+mean((divvy[!train,]$trips-yhat.prune)^2)
+```
+
+* The MSE looks better after pruning, but it looks worse than other methods tried so far.
+* It does seem that Minority seems to have a large influence on rentals, but not sure yet how crime relates.
+* It seems from trees there are two types of crimes that relate, DECEPTIVE_PRACTICE and ASSAULT.
+
+------
+
+# Random Forest
+
+```{r}
+fit.rf = randomForest(trips~., divvy[train,], mtry=6)
+fit.rf
+varImpPlot(fit.rf)
+```
+
+* It seems to be clear that Miniority, Retail Food Establishment have great influence with bike rental.
+* It seems also that deceptive practice and theft being crimes have some influence with bike rental.
+
+### Random Forest - MSE
+
+```{r}
+yhat.rf = predict(fit.rf, divvy[!train,])
+mean((divvy[!train,]$trips-yhat.rf)^2)
+```
+
+------
+
+# GBM
+
+```{r}
+fit.gbm = gbm(trips~., data=divvy[train,], n.trees=1000)
+fit.gbm
+summary(fit.gbm)
+```
+
+### GBM - MSE
+
+```{r}
+yhat = predict(fit.gbm, divvy[!train,], n.trees=1000, type="response")
+mean((divvy[!train,]$trips-yhat)^2)
+yhat = predict(fit.gbm, divvy[!train,], n.trees=500, type="response")
+mean((divvy[!train,]$trips-yhat)^2)
+yhat = predict(fit.gbm, divvy[!train,], n.trees=200, type="response")
+mean((divvy[!train,]$trips-yhat)^2)
+yhat = predict(fit.gbm, divvy[!train,], n.trees=100, type="response")
+mean((divvy[!train,]$trips-yhat)^2)
+```
+
+* At about 200 trees shows the lowest MSE value
+* There is a difference here where along with minority and retail food establishment, capacity and theft seem to be high on the list.
+
+------
+
+# GAM
+
+Ran a GAM to see if we have any improvement.
+
+```{r}
+fit.gam = gam(trips ~ s(PARK_AREA_ACRES) + s(CTA_TRAIN_STATIONS) + s(Limited_Business_License) + s(CAPACITY) + s(MINORITY) + s(ASSAULT) + s(BATTERY) + s(BURGLARY) + s(THEFT) + s(DECEPTIVE_PRACTICE), data = divvy[train,])
+summary(fit.gam)
+par(mfrow=c(1,3))
+plot(fit.gam, se=T)
+```
+
+### GAM - MSE
+
+```{r}
+yhat.gam = predict(fit.gam, divvy[!train,])
+mean((divvy[!train,]$trips-yhat.gam)^2)
+```
